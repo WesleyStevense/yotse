@@ -1,0 +1,96 @@
+# This is a network configuration file for an atomic ensemble based network with a double click scheme connecting
+# Delft to Eindhoven with a repeater in Nieuwegein or Utrecht. Warning: DO NOT CHANGE STRUCTURE OF THIS FILE
+network: delft_eindhoven_repeater_nieuwegein_double_click
+
+ae_sim_params: &ae_sim_params
+  INCLUDE: !include params_double_click.yaml
+
+components:
+  # Delft end node
+  delft:
+    type: AEDoubleClickEndNodeWithDriver
+    properties:
+      port_names:
+        - B
+        - ENT_B_1
+      <<: *ae_sim_params
+      mean_photon_number: 0.045709
+
+  # Nieuwegein or Utrecht repeater node
+  nieuwegein:
+    type: AEDoubleClickRepeaterNodeWithDriver
+    properties:
+      port_names:
+        - A
+        - B
+        - ENT_A
+        - ENT_B
+      <<: *ae_sim_params
+      mean_photon_number_1: 0.002399
+      mean_photon_number_2: 0.031623
+
+  # Eindhoven end node
+  eindhoven:
+    type: AEDoubleClickEndNodeWithDriver
+    properties:
+      port_names:
+        - A
+        - ENT_A_1
+      <<: *ae_sim_params
+      mean_photon_number: 0.010000
+
+  # Heralded connections for generating entanglement
+  Connection_Delft_Nieuwegein:
+    type: ae_heralded_connection
+    properties:
+      distributor: atomic_ensembles
+      <<: *ae_sim_params
+      channel_length_l: 83
+      channel_length_r: 19
+    connect_to:
+      node1: delft
+      node2: nieuwegein
+      port_name_node1: ENT_B_1
+      port_name_node2: ENT_A
+      label: heralding_delft_nieuwegein
+
+  Connection_Nieuwegein_Eindhoven:
+    type: ae_heralded_connection
+    properties:
+      distributor: atomic_ensembles
+      <<: *ae_sim_params
+      channel_length_l: 75
+      channel_length_r: 50
+    connect_to:
+      node1: nieuwegein
+      node2: eindhoven
+      port_name_node1: ENT_B
+      port_name_node2: ENT_A_1
+      label: heralding_nieuwegein_eindhoven
+
+  # Classical connection for transferring classical messages
+  cl_connection_delft_nieuwegein:
+    type: AEClassicalConnection
+    properties:
+      <<: *ae_sim_params
+      channel_length_l: 83
+      channel_length_r: 19
+    connect_to:
+      node1: delft
+      node2: nieuwegein
+      port_name_node1: B
+      port_name_node2: A
+      label: classical_connection_delft_nieuwegein
+
+  cl_connection_nieuwegein_eindhoven:
+    type: AEClassicalConnection
+    properties:
+      <<: *ae_sim_params
+      channel_length_l: 75
+      channel_length_r: 50
+    connect_to:
+      node1: nieuwegein
+      node2: eindhoven
+      port_name_node1: B
+      port_name_node2: A
+      label: classical_connection_nieuwegein_eindhoven

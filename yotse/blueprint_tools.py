@@ -94,6 +94,73 @@ def update_yaml_params(param_list: list, paramfile_name: str) -> None:
     with open(paramfile_name, 'w') as f:
         yaml.dump(params, f, default_flow_style=False)
 
+def update_yaml_mpn(configfile_name: str, p_surv: float, protocol: str='double_click', setup: str='nieuwegein'):
+    """Function that updates the config yaml file of an AE simulation with a single repeater chain for a non pefect PPS 
+    where the heuristic that the probabilities for a photon to arrive at the heralding station are equal.
+    Parameters:
+    ----------
+    configfile_name : str
+        The name of the YAML configuration file to modify.
+    p_surv : floeat
+        Value for the probability for a photon to arrive at heralding station (this is a parameter being sweeped over)
+    protocol: str
+        String indicating whether using single or double click protocol
+    setup: str
+        String indicating whether the repaater is placed in Utrecht or Nieuwegien
+    """
+
+    def calculate_mpns(p, L_1_l, L_1_r, L_2_l, L_2_r, alpha):
+        """
+        Function that computes the desired mean photon numbers in a single repeater chain AE protocol based on the heuristic
+        that the probabilities for a single photon to arrive at the heralding station are all the same.
+
+        Parameters
+        ----------
+        p: desired probability for a photon to reach heralding station
+        L_1_l: distance from the left end node to the left heralding station
+        L_1_r: distance from the left heralding station to the repeater node
+        L_2_l: distance from the repeater node to the right heralding station
+        L_2_r: distance from the right heralding station to the right end node
+        alpha: attenuation of the channels
+
+        Returns
+        -------
+        mpn_end_node_1: mean photon number of the left end node
+        mpn_1: mean photon number of the left source of the repeater node
+        mpn_2: mean photon number of the right source of the repeater node
+        mpn_end_node_1: mean photon number of the right end node
+        """
+        transmittance = lambda L: np.power(10, -(alpha*L)/10)
+        mpn_end_node_1 = p/transmittance(L_1_l)
+        mpn_1 = p/transmittance(L_1_r)
+        mpn_2 = p/transmittance(L_2_l)
+        mpn_end_node_2 = p / transmittance(L_2_r)
+        return mpn_end_node_1, mpn_1, mpn_2, mpn_end_node_2
+
+    # set values of network based on where repeater is
+    if setup == 'nieuwegein':
+        L_1_l, L_1_r, L_2_l, L_2_r = 83, 19, 75, 50
+    elif setup == 'utrecht':
+        L_1_l, L_1_r, L_2_l, L_2_r = 15, 68, 19, 125
+    else:
+        raise ValueError(f"setup should be 'utrecht' or 'nieuwegein', not '{setup}'.")
+    mpn_end_node_1, mpn_1, mpn_2, mpn_end_node_2 = calculate_mpns(p=p_surv, L_1_l=L_1_l, L_1_r=L_1_r, L_2_l=L_2_l,
+                                                                      L_2_r=L_2_r, alpha=0.2)
+    if protocol == 'double_click':
+        with open(configfile_name, 'r') as yaml_file:
+            lines = yaml_file.readlines()
+        #use the line numbers of the config file to update mpn's. Change this if using other config file.
+        lines[16] = f'      mean_photon_number: {mpn_end_node_1:.6f}\n'
+        lines[28] = f'      mean_photon_number_1: {mpn_1:.6f}\n'
+        lines[29] = f'      mean_photon_number_2: {mpn_2:.6f}\n'
+        lines[39] = f'      mean_photon_number: {mpn_end_node_2:.6f}\n'
+        with open(configfile_name, 'w') as output_yaml_file:
+            output_yaml_file.writelines(lines)
+    elif protocol == 'single_click': 
+        raise NotImplementedError()
+    else: 
+        raise ValueError("Protocol should be 'single_click' or 'double_click' not {protocol}.")
+
 
 def represent_scalar_node(dumper: yaml.Dumper, data: yaml.ScalarNode) -> str:
     """Represent a ScalarNode object as a scalar value in a YAML file.
@@ -183,7 +250,7 @@ def replace_include_param_file(configfile_name: str, paramfile_name: str) -> Non
 
 
 def create_separate_files_for_job(experiment: Experiment, datapoint_item: list, step_number: int,
-                                  job_number: int) -> list:
+                                  job_number: int, setup: str=None, protocol: str=None) -> list:
     """Create separate parameter and configuration files for a job and prepare for execution.
 
     Parameters:
@@ -196,6 +263,10 @@ def create_separate_files_for_job(experiment: Experiment, datapoint_item: list, 
         The number of the step in the experiment.
     job_number: int
         The number of the job within the step.
+    setup: str
+        In case of AE with one repeater on SURF  Delft-Eindhoven network: indicate location of repeaeter
+    protocol: str
+        In case of AE: indicate whether using single_click or double_click
 
     Returns:
     -------
@@ -243,20 +314,40 @@ def create_separate_files_for_job(experiment: Experiment, datapoint_item: list, 
     # 2 - take the data_point for the current step + the active parameters/cmdlineargs and then overwrite those
     # in the respective param file
     param_list = []
+    vary_mpns = False
     for p, param in enumerate(experiment.parameters):
-        if param.is_active:
+        if param.is_active and param.name != 'p_surv':
             if len(experiment.parameters) == 1:
                 # single parameter
                 param_list.append((param.name, datapoint_item))
             else:
                 param_list.append((param.name, datapoint_item[p]))
-    if len(param_list) != len(datapoint_item):
+        elif param.is_active and param.name == 'p_surv': 
+            #handle changing mean photon numbers in AE simulation
+            vary_mpns = True
+            if len(experiment.parameters) == 1:
+                # single parameter
+                p_surv = datapoint_item
+            else:
+                p_surv = datapoint_item[p]
+
+    if len(param_list) != len(datapoint_item) and not vary_mpns:
         raise RuntimeError("Datapoint has different length then list of parameters to be changes in paramfile.")
+    if len(param_list) != len(datapoint_item)-1 and vary_mpns:
+        raise RuntimeError("Datapoint has different length then list of parameters to be changes in paramfile.")
+    if vary_mpns and not setup:
+        raise ValueError("For AE simulations where p_surv is varied a setup needs to be specified")
+    if vary_mpns and not protocol:
+        raise ValueError("For AE simulations where p_surv is varied a protocol needs to be specified")
+        
     update_yaml_params(param_list=param_list, paramfile_name=paramfile_dest_path)
 
     # 3 - overwrite the name of the paramfile inside the configfile with the new paramfile name
     replace_include_param_file(configfile_name=configfile_dest_path, paramfile_name=paramfile_dest_path)
-    # 4 - construct new cmdline such that it no longer contains the varied params, but instead the correct paths to
+    #4 - overwrite the configfile's mpn's if applicable 
+    if vary_mpns: 
+        update_yaml_mpn(configfile_name=configfile_dest_path, p_surv=p_surv, setup=setup, protocol=protocol)
+    # 5 - construct new cmdline such that it no longer contains the varied params, but instead the correct paths to
     # the new param and config files
     cmdline = [os.path.join(experiment.system_setup.source_directory, experiment.system_setup.program_name)]
     cmdline.append(configfile_dest_path)
