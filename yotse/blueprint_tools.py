@@ -1,6 +1,7 @@
 import os
 import yaml
 import shutil
+import numpy as np
 from datetime import datetime
 from ruamel.yaml import YAML
 from ruamel.yaml.nodes import ScalarNode
@@ -94,7 +95,7 @@ def update_yaml_params(param_list: list, paramfile_name: str) -> None:
     with open(paramfile_name, 'w') as f:
         yaml.dump(params, f, default_flow_style=False)
 
-def update_yaml_mpn(configfile_name: str, p_surv: float, protocol: str='double_click', setup: str='nieuwegein'):
+def update_yaml_mpn(configfile_name: str, p_surv: float, protocol: str, setup: str):
     """Function that updates the config yaml file of an AE simulation with a single repeater chain for a non pefect PPS 
     where the heuristic that the probabilities for a photon to arrive at the heralding station are equal.
     Parameters:
