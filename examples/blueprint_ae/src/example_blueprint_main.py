@@ -24,12 +24,12 @@ def blueprint_input():
             alloc_time="01:00:00",
             slurm_args=["--exclusive"],
             qcg_cfg={'log_level': 'DEBUG'},
-            modules=["2021", "Python/3.9.5-GCCcore-10.3.0"]#???
+            modules=["2022", "Python/3.10.4-GCCcore-11.3.0"]
         ),
         parameters=[
             Parameter(
                 name="p_surv",
-                param_range=[0.0001, 0.15],
+                param_range=[0.0001, 0.005],
                 constraints={'low': 0.0001, 'high': 0.15},
                 number_points=3,
                 distribution="uniform",
