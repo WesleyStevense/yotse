@@ -15,16 +15,16 @@ def blueprint_input():
             program_name="unified_simulation_script_qkd.py",
             command_line_arguments={"configfile": "ae_surf_config_nieuwegein.yaml",
                                     "paramfile": "ae_baseline_params.yaml",
-                                    "--n_runs": 50},
+                                    "--n_runs": 5},
             analysis_script="processing_function.py",
-            executor="python3",
+            executor="python",
             output_dir_name="output",
-            venv="~/nlblueprint/my_virtual_environment",
+            venv="~/my_venv",
             num_nodes=2,
             alloc_time="01:00:00",
             slurm_args=["--exclusive"],
             qcg_cfg={'log_level': 'DEBUG'},
-            modules=["2022", "Python/3.10.4-GCCcore-11.3.0"]
+            modules=["2021", "Python/3.9.5-GCCcore-10.3.0"]
         ),
         parameters=[
             Parameter(
