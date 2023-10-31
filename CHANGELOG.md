@@ -5,7 +5,19 @@ CHANGELOG
 
 Upcoming
 --------
+* added `json` and `pickle` output file support in `execution.py`
+* added `examples`, `tests` and `show-cov` commands for `poetry`
+* added strict type checking with `mypy` to help catch type issues
+
+
+2023-10-23 (0.2.0)
+-----------------
+* refactor to new, less convoluted code structure
+* made experiments resumable by saving/loading state
+* switched to dependency management using poetry
+* updated installation instructions and documentation in `README.md`
 * added `qcq_cfg` parameter to `pre.SystemSetup` to enable direct passing of config parameters to the QCG `LocalManager`
+
 
 2023-07-13 (0.0.1)
 -----------------

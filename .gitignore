@@ -4,5 +4,8 @@ dist/
 .eggs/
 *.egg-info/
 *.idea
-htmlcov/
 .coverage
+.qcgpjm-*
+output/
+*.xml
+htmlcov/
